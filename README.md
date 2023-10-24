@@ -27,6 +27,3 @@ npx hardhat run scripts/deploy.ts --network zKatana
 - sorce verify
 - 最適化チェック外す
 ```
-git remote add origin git@github.com:shoo5123/BuildingGrowthUpDAO.git
-git branch -M main
-git push -u origin main
