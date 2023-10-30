@@ -19,11 +19,27 @@ npx hardhat compile
 - deploy 
 ```shell
 npx hardhat run scripts/deploy.ts --network zKatana
+
+- err 
+-- https://portal.thirdweb.com/deploy/faqs
 ```
 
 - ver
 ```
-- https://zkatana.blockscout.com/address/0x036526DF94D7cD523906fFBFA7f3eA4534FbB2C5?tab=read_contract
+- https://docs.astar.network/docs/build/zkEVM/smart-contracts/verify-smart-contract
 - sorce verify
 - 最適化チェック外す
+```
+
+- contract interface
+```shell
+- interface
+-- https://portal.thirdweb.com/contracts/ERC20Vote
+
+``` 
+- コード規約
+```shell
+- comment
+-- https://qiita.com/ryu-yama/items/07a348149bcd191c74f0
+
 ```

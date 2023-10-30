@@ -1,23 +1,39 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@thirdweb-dev/contracts/base/ERC20Vote.sol";
+import "@openzeppelin/contracts/governance/Governor.sol";
+import "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
+// import "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
+import "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.sol";
 
-contract GrowthUP is ERC20Vote {
-    
+contract GrowthUP is Governor, GovernorVotes {
     // contract description
     bytes32 private constant MODULE_TYPE = bytes32("VoteERC20");
     uint256 private constant VERSION = 1;
 
-    // DAO definition
-    address private _gavarnanceToken; // ガバナンストークン
-    uint256 private _votingDelay;  // 投票開始までの時間
-    uint256 private _votingPeriod; // 投票開始から終了までの時間
+    // DAO description
+    address private _gavarnanceToken; // ガバナンストークン（投票が可能なトークン）
+    uint8 private _voteUnit; // 1token = 1投票
+    address private constant PRE_PROPOSE_ADDRESS =
+        0x2B38BA2E0C8251D02b61C4DFBEe161dbb6AE3e66; // preProposalができるアドレス
+
+    // preProposal description
+    uint256 private _prePrposalIndex = 0; // preProposal index
+    uint256 private _preProposalVotingDelay; // 投票AIの投票開始までの時間
+    uint256 private _prePrpposalVotingPeriod; // 投票AIの投票開始から終了までの時間
+    uint256 private _preProposalThreshold; // AI投票に必要な投票数。ex 10人の投票AIが存在するとき10が閾値
+
+    // proposal description
+    // preProposal description
+    uint256 private _proposalIndex = 0; // proposal index
+    uint256 private _proposalVotingDelay; // プロジェクト参加企業の参加表明開始までの時間
+    uint256 private _prpposalVotingPeriod; // プロジェクト参加企業の参加表明開始から終了までの時間
+    uint256 private _proposalThreshold; // プロジェクト開始と終了に合意が必要な人数。ex 4社にプロジェクト提案を行う場合、４社が参加表明することでプロジェクトが開始状態になる。また、プロジェクトを終了させるときの合意人数となる。
+    uint8 private _projectFinished; // プロジェクトが終了したフラグ 終了した場合TRUEがたつ
 
     /**
      * preProposal
      * AIが提案と投票を行う。投票が可決されたものが、prposalに昇格する
-     * @dev proposalIdはpreProposalとproposalで同じものを使う
      */
     struct PreProposal {
         uint256 proposalId;
@@ -33,8 +49,7 @@ contract GrowthUP is ERC20Vote {
 
     /**
      * Proposal
-     * AIによるproposal
-     * @dev proposalIdはpreProposalとproposalで同じものを使う
+     * プロジェクトの参加を募集する企業に向けた提案。
      */
     struct Proposal {
         uint256 proposalId;
@@ -46,9 +61,10 @@ contract GrowthUP is ERC20Vote {
         uint256 startBlock;
         uint256 endBlock;
         string description;
+        // TODO: プロジェクトオファーする会社をlistで登録できるようにする
     }
 
-    /// @dev proposal index => Proposal
+    /// @dev preProposal index => Proposal
     mapping(uint256 => PreProposal) public preProposals;
 
     /// @dev proposal index => Proposal
@@ -58,47 +74,58 @@ contract GrowthUP is ERC20Vote {
         address _defaultAdmin,
         string memory _name,
         string memory _symbol,
-        address _token, // gavernance token
-        uint256 _initialVotingDelay,
-        uint256 _initialVotingPeriod
-    )
-        ERC20Vote(
-            _defaultAdmin,
-            _name,
-            _symbol
-        )
-    {
-        _gavarnanceToken = _token;
-        _votingDelay = _initialVotingDelay;
-        _votingPeriod = _initialVotingPeriod;
-
-    }
+        IVotes _token,
+        TimelockController _timelock
+    ) Governor("GrowthUP") GovernorVotes(_token) {}
 
     /**
-     * new preProposal
-     * AIによって提案された提案内容をこのメソッドを使ってDAOに連携する
+     * new propose
+     * prePrposalとproposalの発行
+     *
      */
-    function preProposal() external pure returns (uint8) {
-        // pre-proposalの作成
-        // proposalIdのインクリメント
-        return 1;
-    }
-
-    /**
-     * new proposal
-     * AIによって可決された提案内容をこのメソッドを使ってDAOに連携する
-     * 
-     */
-    function proposal() external pure returns (uint8) {
+    function propose(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description
+    ) public override(Governor) returns (uint256 _proposalId) {
         // proposalの作成
-        // proposalIdのインクリメント
-        return 1;
+        _proposalId = super.propose(targets, values, calldatas, description);
+
+        if (msg.sender == PRE_PROPOSE_ADDRESS) {
+            // AI投稿用アドレス
+            preProposals[_prePrposalIndex] = PreProposal({
+                proposalId: _proposalId,
+                proposer: _msgSender(),
+                targets: targets,
+                values: values,
+                signatures: new string[](targets.length),
+                calldatas: calldatas,
+                startBlock: proposalSnapshot(_proposalId),
+                endBlock: proposalDeadline(_proposalId),
+                description: description
+            });
+            _prePrposalIndex +=1;
+        } else {
+            proposals[_proposalIndex] = Proposal({
+                proposalId: _proposalId,
+                proposer: _msgSender(),
+                targets: targets,
+                values: values,
+                signatures: new string[](targets.length),
+                calldatas: calldatas,
+                startBlock: proposalSnapshot(_proposalId),
+                endBlock: proposalDeadline(_proposalId),
+                description: description
+            });
+            _proposalIndex +=1;
+        }
     }
 
     /**
      * preProposalの可決
      * AIによって判断された可否決をこのメソッドを使って投票する
-     * 
+     *
      */
     function votePreProposal() external pure returns (uint8) {
         // vote PreProposal
@@ -106,13 +133,12 @@ contract GrowthUP is ERC20Vote {
         // 投票時間を過ぎていないかチェック
         // 投票をできるトークン数をもっているかチェック 1token 1投票数
         return 1;
-
     }
 
     /**
      * preProposalの可決
      * AIによって可決された提案は、proposalに昇格する
-     * 
+     *
      */
     function voteProposal() external pure returns (uint8) {
         // vote proposal
@@ -125,7 +151,9 @@ contract GrowthUP is ERC20Vote {
     /**
      * 特定のpreProposal情報の取得
      */
-    function getPreProposal(uint256 proposalId) external pure returns (uint256) {
+    function getPreProposal(
+        uint256 proposalId
+    ) external pure returns (uint256) {
         // proposalIdを指定してpreProposalの返却
         return proposalId;
     }
@@ -136,7 +164,7 @@ contract GrowthUP is ERC20Vote {
     function getAllPreProposals() external pure returns (uint8) {
         return 1;
     }
-    
+
     /**
      * 特定のproposal情報の取得
      */
@@ -155,9 +183,38 @@ contract GrowthUP is ERC20Vote {
     function contractType() external pure returns (bytes32) {
         return MODULE_TYPE;
     }
-    
+
     // contract version
     function contractVersion() public pure returns (uint8) {
         return uint8(VERSION);
     }
+
+    function COUNTING_MODE() external view override returns (string memory) {}
+
+    function votingDelay() public view override returns (uint256) {}
+
+    function votingPeriod() public view override returns (uint256) {}
+
+    function quorum(uint256 timepoint) public view override returns (uint256) {}
+
+    function hasVoted(
+        uint256 proposalId,
+        address account
+    ) external view override returns (bool) {}
+
+    function _quorumReached(
+        uint256 proposalId
+    ) internal view virtual override returns (bool) {}
+
+    function _voteSucceeded(
+        uint256 proposalId
+    ) internal view virtual override returns (bool) {}
+
+    function _countVote(
+        uint256 proposalId,
+        address account,
+        uint8 support,
+        uint256 weight,
+        bytes memory params
+    ) internal virtual override {}
 }
