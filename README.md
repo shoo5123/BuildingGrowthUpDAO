@@ -43,3 +43,22 @@ npx hardhat run scripts/deploy.ts --network zKatana
 -- https://qiita.com/ryu-yama/items/07a348149bcd191c74f0
 
 ```
+
+- unit test for remix
+
+-- deploy
+```shell
+0x3877fc557dd67317094cf67Baf561B22db710858
+GrowthUP
+GU
+0x7EE3CcB05Dae96d7ca2A614545AD16230062DBF9
+0x18aEFe337E68f5Bd3e18Ba09960f9136754590a6
+```
+
+-- propose preProposal
+```shell
+["0x2B38BA2E0C8251D02b61C4DFBEe161dbb6AE3e66"]
+[5]
+["0x4554480000000000000000000000000000000000000000000000000000000000"]
+test1
+```
