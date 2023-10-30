@@ -149,34 +149,27 @@ contract GrowthUP is Governor, GovernorVotes {
     }
 
     /**
-     * 特定のpreProposal情報の取得
+     * 全てのpreProposal取得
      */
-    function getPreProposal(
-        uint256 proposalId
-    ) external pure returns (uint256) {
-        // proposalIdを指定してpreProposalの返却
-        return proposalId;
+    function getAllPreProposals() external view returns (PreProposal[] memory allPreProposals)  {
+        uint256 nextPreProposalIndex = _prePrposalIndex;
+
+        allPreProposals = new PreProposal[](nextPreProposalIndex);
+        for (uint256 i = 0; i < nextPreProposalIndex; i += 1) {
+            allPreProposals[i] = preProposals[i];
+        }
     }
 
     /**
-     * 全てのpreProposal情報の取得
+     * 全てのpreProposal取得
      */
-    function getAllPreProposals() external pure returns (uint8) {
-        return 1;
-    }
+    function getAllProposals() external view returns (Proposal[] memory allProposals) {
+        uint256 nextProposalIndex = _proposalIndex;
 
-    /**
-     * 特定のproposal情報の取得
-     */
-    function getProposal(uint256 proposalId) external pure returns (uint256) {
-        return proposalId;
-    }
-
-    /**
-     * 全てのpreProposal情報の取得
-     */
-    function getAllProposals() external pure returns (uint8) {
-        return 1;
+        allProposals = new Proposal[](nextProposalIndex);
+        for (uint256 i = 0; i < nextProposalIndex; i += 1) {
+            allProposals[i] = proposals[i];
+        }
     }
 
     // contract type
