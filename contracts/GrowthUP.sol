@@ -123,7 +123,8 @@ contract GrowthUP is Governor, GovernorVotes {
     }
 
     function castVote(uint256 proposalId, uint8 support) public override returns (uint256) {
-        return super.castVote(proposalId, support);
+        super.castVote(proposalId, support);
+        return _castVote(proposalId, msg.sender, support, "");
     }
 
     /**
@@ -189,7 +190,7 @@ contract GrowthUP is Governor, GovernorVotes {
         uint8 support,
         uint256 weight,
         bytes memory params
-    ) internal virtual override {
-        countVoteTest ++;
+    ) internal override {
+        countVoteTest += 1;
     }
 }
