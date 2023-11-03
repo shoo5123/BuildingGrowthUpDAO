@@ -203,11 +203,15 @@ contract GrowthUP is Governor, GovernorVotes {
         uint256 proposalId
     ) internal view virtual override returns (bool) {}
 
+    // test
+    uint8 public countVoteTest = 0;
     function _countVote(
         uint256 proposalId,
         address account,
         uint8 support,
         uint256 weight,
         bytes memory params
-    ) internal virtual override {}
+    ) internal virtual override {
+        countVoteTest ++;
+    }
 }
