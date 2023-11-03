@@ -122,30 +122,8 @@ contract GrowthUP is Governor, GovernorVotes {
         }
     }
 
-    /**
-     * preProposalの可決
-     * AIによって判断された可否決をこのメソッドを使って投票する
-     *
-     */
-    function votePreProposal() external pure returns (uint8) {
-        // vote PreProposal
-        // 投票時間前になっていないかチェック
-        // 投票時間を過ぎていないかチェック
-        // 投票をできるトークン数をもっているかチェック 1token 1投票数
-        return 1;
-    }
-
-    /**
-     * preProposalの可決
-     * AIによって可決された提案は、proposalに昇格する
-     *
-     */
-    function voteProposal() external pure returns (uint8) {
-        // vote proposal
-        // 投票時間前になっていないかチェック
-        // 投票時間を過ぎていないかチェック
-        // 投票をできるトークン数をもっているかチェック 1token 1投票数
-        return 1;
+    function castVote(uint256 proposalId, uint8 support) public override returns (uint256) {
+        return super.castVote(proposalId, support);
     }
 
     /**
