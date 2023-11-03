@@ -122,9 +122,27 @@ contract GrowthUP is Governor, GovernorVotes {
         }
     }
 
+    /**
+     * 投票をUIからリクエストを行う関数
+     * support 0:承認 1:否決 2:棄権
+     */
     function castVote(uint256 proposalId, uint8 support) public override returns (uint256) {
+        address voter = msg.sender;
         super.castVote(proposalId, support);
-        return _castVote(proposalId, msg.sender, support, "");
+    }
+    
+    /**
+     * 投票をUIからリクエストを行う関数
+     * support 0:承認 1:否決 2:棄権
+     */
+    function _countVote(
+        uint256 proposalId,
+        address account,
+        uint8 support,
+        uint256 weight,
+        bytes memory params
+    ) internal override {
+        countVoteTest += 1;
     }
 
     /**
@@ -163,9 +181,22 @@ contract GrowthUP is Governor, GovernorVotes {
 
     function COUNTING_MODE() external view override returns (string memory) {}
 
-    function votingDelay() public view override returns (uint256) {}
-
-    function votingPeriod() public view override returns (uint256) {}
+    /**
+     * 投票が開始までの待機ブロック数
+     */
+    function votingDelay() public view override returns (uint256) {
+        // TODO preProposalとproposalで待機時間を切り替えられるようにする
+        return 0;
+    }
+    
+    /**
+     * 投票が開始されてから終了するまでのブロック数
+     * 1block -> 約1s
+     */
+    function votingPeriod() public view override returns (uint256) {
+        // TODO preProposalとproposalで待機時間を切り替えられるようにする
+        return 100;
+    }
 
     function quorum(uint256 timepoint) public view override returns (uint256) {}
 
@@ -182,15 +213,5 @@ contract GrowthUP is Governor, GovernorVotes {
         uint256 proposalId
     ) internal view virtual override returns (bool) {}
 
-    // test
-    uint8 public countVoteTest = 0;
-    function _countVote(
-        uint256 proposalId,
-        address account,
-        uint8 support,
-        uint256 weight,
-        bytes memory params
-    ) internal override {
-        countVoteTest += 1;
-    }
+
 }
