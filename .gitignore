@@ -1,9 +1,12 @@
 node_modules
+src/@Thirdweb-dev/
+src/build-info
 .env
 coverage
 coverage.json
 typechain
 typechain-types
+
 
 # Hardhat files
 cache
