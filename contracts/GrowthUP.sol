@@ -20,17 +20,17 @@ contract GrowthUP is Governor, GovernorVotes {
 
     // preProposal description
     uint256 private _prePrposalIndex = 0; // preProposal index
-    uint256 private _preProposalVotingDelay; // 投票AIの投票開始までの時間
-    uint256 private _prePrpposalVotingPeriod; // 投票AIの投票開始から終了までの時間
-    uint256 private _preProposalThreshold; // AI投票に必要な投票数。ex 10人の投票AIが存在するとき10が閾値
+    // uint256 private _preProposalVotingDelay; // 投票AIの投票開始までの時間
+    // uint256 private _prePrpposalVotingPeriod; // 投票AIの投票開始から終了までの時間
+    // uint256 private _preProposalThreshold; // AI投票に必要な投票数。ex 10人の投票AIが存在するとき10が閾値
 
     // proposal description
     // preProposal description
     uint256 private _proposalIndex = 0; // proposal index
     uint256 private _proposalVotingDelay; // プロジェクト参加企業の参加表明開始までの時間
-    uint256 private _prpposalVotingPeriod; // プロジェクト参加企業の参加表明開始から終了までの時間
-    uint256 private _proposalThreshold; // プロジェクト開始と終了に合意が必要な人数。ex 4社にプロジェクト提案を行う場合、４社が参加表明することでプロジェクトが開始状態になる。また、プロジェクトを終了させるときの合意人数となる。
-    uint8 private _projectFinished; // プロジェクトが終了したフラグ 終了した場合TRUEがたつ
+    // uint256 private _prpposalVotingPeriod; // プロジェクト参加企業の参加表明開始から終了までの時間
+    // uint256 private _proposalThreshold; // プロジェクト開始と終了に合意が必要な人数。ex 4社にプロジェクト提案を行う場合、４社が参加表明することでプロジェクトが開始状態になる。また、プロジェクトを終了させるときの合意人数となる。
+    // uint8 private _projectFinished; // プロジェクトが終了したフラグ 終了した場合TRUEがたつ
 
     /**
      * preProposal
@@ -266,6 +266,4 @@ contract GrowthUP is Governor, GovernorVotes {
     function _voteSucceeded(
         uint256 proposalId
     ) internal view virtual override returns (bool) {}
-
-
 }
