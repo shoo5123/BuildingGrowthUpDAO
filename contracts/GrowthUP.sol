@@ -16,6 +16,7 @@ contract GrowthUP is Governor, GovernorVotes {
     uint8 private _voteUnit; // 1token = 1投票
     address private constant PRE_PROPOSE_ADDRESS =
         0x2B38BA2E0C8251D02b61C4DFBEe161dbb6AE3e66; // preProposalができるアドレス
+    uint256 constant VOTE_INIT = 0; // 投票の初期値
 
     // preProposal description
     uint256 private _prePrposalIndex = 0; // preProposal index
@@ -45,13 +46,16 @@ contract GrowthUP is Governor, GovernorVotes {
         uint256 startBlock;
         uint256 endBlock;
         string description;
+        uint256 forVotes;
+        uint256 againstVotes;
+        uint256 abstainVotes;
     }
 
     /**
      * Proposal
      * プロジェクトの参加を募集する企業に向けた提案。
      */
-    struct Proposal {
+    struct ProjectProposal {
         uint256 proposalId;
         address proposer;
         address[] targets;
@@ -61,6 +65,9 @@ contract GrowthUP is Governor, GovernorVotes {
         uint256 startBlock;
         uint256 endBlock;
         string description;
+        uint256 forVotes;
+        uint256 againstVotes;
+        uint256 abstainVotes;
         // TODO: プロジェクトオファーする会社をlistで登録できるようにする
     }
 
@@ -68,7 +75,7 @@ contract GrowthUP is Governor, GovernorVotes {
     mapping(uint256 => PreProposal) public preProposals;
 
     /// @dev proposal index => Proposal
-    mapping(uint256 => Proposal) public proposals;
+    mapping(uint256 => ProjectProposal) public projectProposals;
 
     constructor(
         address _defaultAdmin,
@@ -103,11 +110,14 @@ contract GrowthUP is Governor, GovernorVotes {
                 calldatas: calldatas,
                 startBlock: proposalSnapshot(_proposalId),
                 endBlock: proposalDeadline(_proposalId),
-                description: description
+                description: description,
+                forVotes: VOTE_INIT,
+                againstVotes: VOTE_INIT,
+                abstainVotes: VOTE_INIT
             });
             _prePrposalIndex +=1;
         } else {
-            proposals[_proposalIndex] = Proposal({
+            projectProposals[_proposalIndex] = ProjectProposal({
                 proposalId: _proposalId,
                 proposer: _msgSender(),
                 targets: targets,
@@ -116,7 +126,10 @@ contract GrowthUP is Governor, GovernorVotes {
                 calldatas: calldatas,
                 startBlock: proposalSnapshot(_proposalId),
                 endBlock: proposalDeadline(_proposalId),
-                description: description
+                description: description,
+                forVotes: VOTE_INIT,
+                againstVotes: VOTE_INIT,
+                abstainVotes: VOTE_INIT
             });
             _proposalIndex +=1;
         }
@@ -127,7 +140,6 @@ contract GrowthUP is Governor, GovernorVotes {
      * support 0:承認 1:否決 2:棄権
      */
     function castVote(uint256 proposalId, uint8 support) public override returns (uint256) {
-        address voter = msg.sender;
         super.castVote(proposalId, support);
     }
     
@@ -142,7 +154,49 @@ contract GrowthUP is Governor, GovernorVotes {
         uint256 weight,
         bytes memory params
     ) internal override {
-        countVoteTest += 1;
+        // HACK:preProposal/proposalどちらにもproposalIdがヒットしないときの処理がいけてない
+        uint8 _proposalType = _proposalTypeByProposalId(proposalId);
+        
+        // preProposal/projevtProposalのどちらでもない場合errorにする
+        if(_proposalType == 3) revert("Proposal tyoe check error.");
+
+        if (support == 0) {
+            // 承認
+            if(_proposalType == 0){
+                preProposals[proposalId].forVotes +=1;
+            } else if(_proposalType == 1){
+                projectProposals[proposalId].forVotes +=1;
+            }
+        }
+        else if (support == 1) {
+            // 承認
+            if(_proposalType == 0){
+                preProposals[proposalId].forVotes +=1;
+            } else if(_proposalType == 1){
+                projectProposals[proposalId].forVotes +=1;
+            }
+        } else if (support == 2) {
+            // 承認
+            if(_proposalType == 0){
+                preProposals[proposalId].forVotes +=1;
+            } else if(_proposalType == 1){
+                projectProposals[proposalId].forVotes +=1;
+            }
+        }
+    }
+
+    /**
+     * proposalIdからAI投票proposalかプロジェクトproposalか調べる
+     * @return 0:preProposal 1:projectProposal 3:該当なし
+     */
+    function _proposalTypeByProposalId(uint256 proposalId) internal view returns (uint8) {
+        // TODO: 戻り値をEnumにする
+        if (preProposals[proposalId].proposalId == proposalId) {
+            return 0;
+        } else if (projectProposals[proposalId].proposalId == proposalId) {
+            return 1;
+        }
+        return 3;
     }
 
     /**
@@ -160,12 +214,12 @@ contract GrowthUP is Governor, GovernorVotes {
     /**
      * 全てのpreProposal取得
      */
-    function getAllProposals() external view returns (Proposal[] memory allProposals) {
+    function getAllProjectProposals() external view returns (ProjectProposal[] memory allProposals) {
         uint256 nextProposalIndex = _proposalIndex;
 
-        allProposals = new Proposal[](nextProposalIndex);
+        allProposals = new ProjectProposal[](nextProposalIndex);
         for (uint256 i = 0; i < nextProposalIndex; i += 1) {
-            allProposals[i] = proposals[i];
+            allProposals[i] = projectProposals[i];
         }
     }
 
@@ -184,7 +238,7 @@ contract GrowthUP is Governor, GovernorVotes {
     /**
      * 投票が開始までの待機ブロック数
      */
-    function votingDelay() public view override returns (uint256) {
+    function votingDelay() public pure override returns (uint256) {
         // TODO preProposalとproposalで待機時間を切り替えられるようにする
         return 0;
     }
@@ -193,7 +247,7 @@ contract GrowthUP is Governor, GovernorVotes {
      * 投票が開始されてから終了するまでのブロック数
      * 1block -> 約1s
      */
-    function votingPeriod() public view override returns (uint256) {
+    function votingPeriod() public pure override returns (uint256) {
         // TODO preProposalとproposalで待機時間を切り替えられるようにする
         return 100;
     }

@@ -64,3 +64,9 @@ test1
 ```
 
 15579047777698735748152250923784599393318854168414486894408336291437025742326
+
+        uint256 forVotes;
+        /// @notice Current number of votes in opposition to this proposal
+        uint256 againstVotes;
+        /// @notice Current number of votes for abstaining for this proposal
+        uint256 abstainVotes;
