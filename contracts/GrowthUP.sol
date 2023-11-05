@@ -89,7 +89,7 @@ contract GrowthUP is Governor, GovernorVotes {
         string memory _name,
         string memory _symbol,
         IVotes _token
-        ) Governor("GrowthUP") GovernorVotes(_token) {}
+    ) Governor("GrowthUP") GovernorVotes(_token) {}
 
     /**
      * new propose
@@ -123,7 +123,7 @@ contract GrowthUP is Governor, GovernorVotes {
                 abstainVotes: VOTE_INIT
             });
             preProposalNoMap[_proposalId] = _prePrposalIndex;
-            _prePrposalIndex +=1;
+            _prePrposalIndex += 1;
         } else {
             projectProposals[_projectProposalIndex] = ProjectProposal({
                 id: _projectProposalIndex,
@@ -141,7 +141,7 @@ contract GrowthUP is Governor, GovernorVotes {
                 abstainVotes: VOTE_INIT
             });
             projectProposalNoMap[_proposalId] = _projectProposalIndex;
-            _projectProposalIndex +=1;
+            _projectProposalIndex += 1;
         }
     }
 
@@ -149,45 +149,52 @@ contract GrowthUP is Governor, GovernorVotes {
      * 投票をUIからリクエストを行う関数
      * support 0:承認 1:否決 2:棄権
      */
-    function castVote(uint256 proposalId, uint8 support) public override returns (uint256) {
+    function castVote(
+        uint256 proposalId,
+        uint8 support
+    ) public override returns (uint256) {
         super.castVote(proposalId, support);
     }
-    
-    /**
-     * 投票をUIからリクエストを行う関数
-     * support 0:承認 1:否決 2:棄権
-     */
-    function _countVote(
-        uint256 proposalId,
-        address account,
-        uint8 support,
-        uint256 weight,
-        bytes memory params
-    ) internal override {
-        // // HACK:preProposal/proposalどちらにもproposalIdがヒットしないときの処理がいけてない
-        // // proposalIdが0のとき登録がされてない
-        // uint256 _preProposalIndex = preProposalNoMap[proposalId];
-        // uint256 _projectProposalIndex = projectProposalNoMap[proposalId];
 
-        // if (_preProposalIndex >= 1) {
-        //     if (support == 0) preProposals[_preProposalIndex].forVotes +=1;
-        //     else if (support == 1) preProposals[_preProposalIndex].againstVotes +=1;
-        //     else if (support == 2) preProposals[_preProposalIndex].abstainVotes +=1;
-        // }
-        // else if (_projectProposalIndex >= 1) {
-        //     if (support == 0) projectProposals[_projectProposalIndex].forVotes +=1;
-        //     else if (support == 1) projectProposals[_projectProposalIndex].againstVotes +=1;
-        //     else if (support == 2) projectProposals[_projectProposalIndex].abstainVotes +=1;
-        // }
-        // // preProposal/projevtProposalのどちらでもない場合errorにする
-        // //if(_preProposalID == 0 && _projectProposalID ==0) revert("Proposal type check error.");
-        super._countVote(proposalId, account, support, weight, params)
-    }
+    // /**
+    //  * 投票をUIからリクエストを行う関数
+    //  * support 0:承認 1:否決 2:棄権
+    //  */
+    // function _countVote(
+    //     uint256 proposalId,
+    //     address account,
+    //     uint8 support,
+    //     uint256 weight,
+    //     bytes memory params
+    // ) internal override {
+    //     // // HACK:preProposal/proposalどちらにもproposalIdがヒットしないときの処理がいけてない
+    //     // // proposalIdが0のとき登録がされてない
+    //     // uint256 _preProposalIndex = preProposalNoMap[proposalId];
+    //     // uint256 _projectProposalIndex = projectProposalNoMap[proposalId];
+
+    //     // if (_preProposalIndex >= 1) {
+    //     //     if (support == 0) preProposals[_preProposalIndex].forVotes +=1;
+    //     //     else if (support == 1) preProposals[_preProposalIndex].againstVotes +=1;
+    //     //     else if (support == 2) preProposals[_preProposalIndex].abstainVotes +=1;
+    //     // }
+    //     // else if (_projectProposalIndex >= 1) {
+    //     //     if (support == 0) projectProposals[_projectProposalIndex].forVotes +=1;
+    //     //     else if (support == 1) projectProposals[_projectProposalIndex].againstVotes +=1;
+    //     //     else if (support == 2) projectProposals[_projectProposalIndex].abstainVotes +=1;
+    //     // }
+    //     // // preProposal/projevtProposalのどちらでもない場合errorにする
+    //     // //if(_preProposalID == 0 && _projectProposalID ==0) revert("Proposal type check error.");
+    //     super._countVote(proposalId, account, support, weight, params);
+    // }
 
     /**
      * 全てのpreProposal取得
      */
-    function getAllPreProposals() external view returns (PreProposal[] memory allPreProposals)  {
+    function getAllPreProposals()
+        external
+        view
+        returns (PreProposal[] memory allPreProposals)
+    {
         uint256 nextPreProposalIndex = _prePrposalIndex;
 
         allPreProposals = new PreProposal[](nextPreProposalIndex);
@@ -199,7 +206,11 @@ contract GrowthUP is Governor, GovernorVotes {
     /**
      * 全てのpreProposal取得
      */
-    function getAllProjectProposals() external view returns (ProjectProposal[] memory allProposals) {
+    function getAllProjectProposals()
+        external
+        view
+        returns (ProjectProposal[] memory allProposals)
+    {
         uint256 nextProposalIndex = _projectProposalIndex;
 
         allProposals = new ProjectProposal[](nextProposalIndex);
@@ -227,7 +238,7 @@ contract GrowthUP is Governor, GovernorVotes {
         // TODO preProposalとproposalで待機時間を切り替えられるようにする
         return 0;
     }
-    
+
     /**
      * 投票が開始されてから終了するまでのブロック数
      * 1block -> 約1s
@@ -251,42 +262,12 @@ contract GrowthUP is Governor, GovernorVotes {
     function _voteSucceeded(
         uint256 proposalId
     ) internal view virtual override returns (bool) {}
-    
-    function cancel(
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        bytes32 descriptionHash
-    ) public override(Governor, IGovernor) returns (uint256) {
-        return super.cancel(targets, values, calldatas, descriptionHash);
-    }
 
-    function _cancel(
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        bytes32 descriptionHash
-    ) internal override(Governor) returns (uint256) {
-        return super._cancel(targets, values, calldatas, descriptionHash);
-    }
-
-    function _execute(
+    function _countVote(
         uint256 proposalId,
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        bytes32 descriptionHash
-    ) internal override(Governor) {
-        super._execute(proposalId, targets, values, calldatas, descriptionHash);
-    }
-
-    function _executor() internal view override(Governor) returns (address) {
-        return super._executor();
-    }
-
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view override(Governor, IERC165) returns (bool) {
-        return super.supportsInterface(interfaceId);
-    }
+        address account,
+        uint8 support,
+        uint256 weight,
+        bytes memory params
+    ) internal virtual override {}
 }
