@@ -19,14 +19,14 @@ contract GrowthUP is Governor, GovernorVotes {
     uint256 constant VOTE_INIT = 0; // 投票の初期値
 
     // preProposal description
-    uint256 private _prePrposalIndex = 0; // preProposal index
+    uint256 private _prePrposalIndex = 1; // preProposal index
     // uint256 private _preProposalVotingDelay; // 投票AIの投票開始までの時間
     // uint256 private _prePrpposalVotingPeriod; // 投票AIの投票開始から終了までの時間
     // uint256 private _preProposalThreshold; // AI投票に必要な投票数。ex 10人の投票AIが存在するとき10が閾値
 
     // proposal description
     // preProposal description
-    uint256 private _proposalIndex = 0; // proposal index
+    uint256 private _projectProposalIndex = 1; // proposal index
     uint256 private _proposalVotingDelay; // プロジェクト参加企業の参加表明開始までの時間
     // uint256 private _prpposalVotingPeriod; // プロジェクト参加企業の参加表明開始から終了までの時間
     // uint256 private _proposalThreshold; // プロジェクト開始と終了に合意が必要な人数。ex 4社にプロジェクト提案を行う場合、４社が参加表明することでプロジェクトが開始状態になる。また、プロジェクトを終了させるときの合意人数となる。
@@ -37,6 +37,7 @@ contract GrowthUP is Governor, GovernorVotes {
      * AIが提案と投票を行う。投票が可決されたものが、prposalに昇格する
      */
     struct PreProposal {
+        uint256 id;
         uint256 proposalId;
         address proposer;
         address[] targets;
@@ -56,6 +57,7 @@ contract GrowthUP is Governor, GovernorVotes {
      * プロジェクトの参加を募集する企業に向けた提案。
      */
     struct ProjectProposal {
+        uint256 id;
         uint256 proposalId;
         address proposer;
         address[] targets;
@@ -70,6 +72,10 @@ contract GrowthUP is Governor, GovernorVotes {
         uint256 abstainVotes;
         // TODO: プロジェクトオファーする会社をlistで登録できるようにする
     }
+
+    /// @dev poposalIdからidを引けるようにする proposalId => id
+    mapping(uint256 => uint256) public preProposalNoMap;
+    mapping(uint256 => uint256) public projectProposalNoMap;
 
     /// @dev preProposal index => Proposal
     mapping(uint256 => PreProposal) public preProposals;
@@ -102,6 +108,7 @@ contract GrowthUP is Governor, GovernorVotes {
         if (msg.sender == PRE_PROPOSE_ADDRESS) {
             // AI投稿用アドレス
             preProposals[_prePrposalIndex] = PreProposal({
+                id: _prePrposalIndex,
                 proposalId: _proposalId,
                 proposer: _msgSender(),
                 targets: targets,
@@ -115,9 +122,11 @@ contract GrowthUP is Governor, GovernorVotes {
                 againstVotes: VOTE_INIT,
                 abstainVotes: VOTE_INIT
             });
+            preProposalNoMap[_proposalId] = _prePrposalIndex;
             _prePrposalIndex +=1;
         } else {
-            projectProposals[_proposalIndex] = ProjectProposal({
+            projectProposals[_projectProposalIndex] = ProjectProposal({
+                id: _projectProposalIndex,
                 proposalId: _proposalId,
                 proposer: _msgSender(),
                 targets: targets,
@@ -131,7 +140,8 @@ contract GrowthUP is Governor, GovernorVotes {
                 againstVotes: VOTE_INIT,
                 abstainVotes: VOTE_INIT
             });
-            _proposalIndex +=1;
+            projectProposalNoMap[_proposalId] = _projectProposalIndex;
+            _projectProposalIndex +=1;
         }
     }
 
@@ -155,48 +165,22 @@ contract GrowthUP is Governor, GovernorVotes {
         bytes memory params
     ) internal override {
         // HACK:preProposal/proposalどちらにもproposalIdがヒットしないときの処理がいけてない
-        uint8 _proposalType = _proposalTypeByProposalId(proposalId);
-        
+        // proposalIdが0のとき登録がされてない
+        uint256 _preProposalIndex = preProposalNoMap[proposalId];
+        uint256 _projectProposalIndex = projectProposalNoMap[proposalId];
+
+        if (_preProposalIndex >= 1) {
+            if (support == 0) preProposals[_preProposalIndex].forVotes +=1;
+            else if (support == 1) preProposals[_preProposalIndex].againstVotes +=1;
+            else if (support == 2) preProposals[_preProposalIndex].abstainVotes +=1;
+        }
+        else if (_projectProposalIndex >= 1) {
+            if (support == 0) projectProposals[_projectProposalIndex].forVotes +=1;
+            else if (support == 1) projectProposals[_projectProposalIndex].againstVotes +=1;
+            else if (support == 2) projectProposals[_projectProposalIndex].abstainVotes +=1;
+        }
         // preProposal/projevtProposalのどちらでもない場合errorにする
-        if(_proposalType == 3) revert("Proposal tyoe check error.");
-
-        if (support == 0) {
-            // 承認
-            if(_proposalType == 0){
-                preProposals[proposalId].forVotes +=1;
-            } else if(_proposalType == 1){
-                projectProposals[proposalId].forVotes +=1;
-            }
-        }
-        else if (support == 1) {
-            // 承認
-            if(_proposalType == 0){
-                preProposals[proposalId].forVotes +=1;
-            } else if(_proposalType == 1){
-                projectProposals[proposalId].forVotes +=1;
-            }
-        } else if (support == 2) {
-            // 承認
-            if(_proposalType == 0){
-                preProposals[proposalId].forVotes +=1;
-            } else if(_proposalType == 1){
-                projectProposals[proposalId].forVotes +=1;
-            }
-        }
-    }
-
-    /**
-     * proposalIdからAI投票proposalかプロジェクトproposalか調べる
-     * @return 0:preProposal 1:projectProposal 3:該当なし
-     */
-    function _proposalTypeByProposalId(uint256 proposalId) internal view returns (uint8) {
-        // TODO: 戻り値をEnumにする
-        if (preProposals[proposalId].proposalId == proposalId) {
-            return 0;
-        } else if (projectProposals[proposalId].proposalId == proposalId) {
-            return 1;
-        }
-        return 3;
+        //if(_preProposalID == 0 && _projectProposalID ==0) revert("Proposal type check error.");
     }
 
     /**
@@ -215,7 +199,7 @@ contract GrowthUP is Governor, GovernorVotes {
      * 全てのpreProposal取得
      */
     function getAllProjectProposals() external view returns (ProjectProposal[] memory allProposals) {
-        uint256 nextProposalIndex = _proposalIndex;
+        uint256 nextProposalIndex = _projectProposalIndex;
 
         allProposals = new ProjectProposal[](nextProposalIndex);
         for (uint256 i = 0; i < nextProposalIndex; i += 1) {
