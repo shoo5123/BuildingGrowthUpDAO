@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/governance/Governor.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
 // import "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.sol";
+import "node_modules/@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
 
 contract GrowthUP is Governor, GovernorVotes {
     // contract description
@@ -164,23 +165,24 @@ contract GrowthUP is Governor, GovernorVotes {
         uint256 weight,
         bytes memory params
     ) internal override {
-        // HACK:preProposal/proposalどちらにもproposalIdがヒットしないときの処理がいけてない
-        // proposalIdが0のとき登録がされてない
-        uint256 _preProposalIndex = preProposalNoMap[proposalId];
-        uint256 _projectProposalIndex = projectProposalNoMap[proposalId];
+        // // HACK:preProposal/proposalどちらにもproposalIdがヒットしないときの処理がいけてない
+        // // proposalIdが0のとき登録がされてない
+        // uint256 _preProposalIndex = preProposalNoMap[proposalId];
+        // uint256 _projectProposalIndex = projectProposalNoMap[proposalId];
 
-        if (_preProposalIndex >= 1) {
-            if (support == 0) preProposals[_preProposalIndex].forVotes +=1;
-            else if (support == 1) preProposals[_preProposalIndex].againstVotes +=1;
-            else if (support == 2) preProposals[_preProposalIndex].abstainVotes +=1;
-        }
-        else if (_projectProposalIndex >= 1) {
-            if (support == 0) projectProposals[_projectProposalIndex].forVotes +=1;
-            else if (support == 1) projectProposals[_projectProposalIndex].againstVotes +=1;
-            else if (support == 2) projectProposals[_projectProposalIndex].abstainVotes +=1;
-        }
-        // preProposal/projevtProposalのどちらでもない場合errorにする
-        //if(_preProposalID == 0 && _projectProposalID ==0) revert("Proposal type check error.");
+        // if (_preProposalIndex >= 1) {
+        //     if (support == 0) preProposals[_preProposalIndex].forVotes +=1;
+        //     else if (support == 1) preProposals[_preProposalIndex].againstVotes +=1;
+        //     else if (support == 2) preProposals[_preProposalIndex].abstainVotes +=1;
+        // }
+        // else if (_projectProposalIndex >= 1) {
+        //     if (support == 0) projectProposals[_projectProposalIndex].forVotes +=1;
+        //     else if (support == 1) projectProposals[_projectProposalIndex].againstVotes +=1;
+        //     else if (support == 2) projectProposals[_projectProposalIndex].abstainVotes +=1;
+        // }
+        // // preProposal/projevtProposalのどちらでもない場合errorにする
+        // //if(_preProposalID == 0 && _projectProposalID ==0) revert("Proposal type check error.");
+        super._countVote(proposalId, account, support, weight, params)
     }
 
     /**
