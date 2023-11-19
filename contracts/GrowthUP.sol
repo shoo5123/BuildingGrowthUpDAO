@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/governance/Governor.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract GrowthUP is Governor, GovernorVotes {
     // contract description
@@ -37,14 +38,12 @@ contract GrowthUP is Governor, GovernorVotes {
     }
 
     struct ProposalVote {
-        uint256 againstVotes;
         uint256 forVotes;
+        uint256 againstVotes;
         uint256 abstainVotes;
         mapping(address voter => bool) hasVoted;
     }
-
-    mapping(uint256 proposalId => ProposalVote) private _proposalVotes;
-
+ 
     /**
      * preProposal
      * AIが提案と投票を行う。投票が可決されたものが、prposalに昇格する
@@ -60,9 +59,6 @@ contract GrowthUP is Governor, GovernorVotes {
         uint256 startBlock;
         uint256 endBlock;
         string description;
-        uint256 forVotes;
-        uint256 againstVotes;
-        uint256 abstainVotes;
     }
 
     /**
@@ -80,21 +76,16 @@ contract GrowthUP is Governor, GovernorVotes {
         uint256 startBlock;
         uint256 endBlock;
         string description;
-        uint256 forVotes;
-        uint256 againstVotes;
-        uint256 abstainVotes;
-        // TODO: プロジェクトオファーする会社をlistで登録できるようにする
     }
 
+    /// Maps
     /// @dev poposalIdからidを引けるようにする proposalId => id
     mapping(uint256 => uint256) public preProposalNoMap;
     mapping(uint256 => uint256) public projectProposalNoMap;
-
     /// @dev preProposal index => Proposal
     mapping(uint256 => PreProposal) public preProposals;
-
-    /// @dev proposal index => Proposal
     mapping(uint256 => ProjectProposal) public projectProposals;
+    mapping(uint256 proposalId => ProposalVote) public proposalVotes;
 
     constructor(
         address _defaultAdmin,
@@ -118,40 +109,36 @@ contract GrowthUP is Governor, GovernorVotes {
         _proposalId = super.propose(targets, values, calldatas, description);
 
         if (msg.sender == PRE_PROPOSE_ADDRESS) {
-            // AI投稿用アドレス
-            preProposals[_prePrposalIndex] = PreProposal({
-                id: _prePrposalIndex,
-                proposalId: _proposalId,
-                proposer: _msgSender(),
-                targets: targets,
-                values: values,
-                signatures: new string[](targets.length),
-                calldatas: calldatas,
-                startBlock: proposalSnapshot(_proposalId),
-                endBlock: proposalDeadline(_proposalId),
-                description: description,
-                forVotes: VOTE_INIT,
-                againstVotes: VOTE_INIT,
-                abstainVotes: VOTE_INIT
-            });
+            // AI投稿用アドレスのとき
+
+            // data set
+            PreProposal storage preProposal = preProposals[_prePrposalIndex];
+            preProposal.id = _prePrposalIndex;
+            preProposal.proposer = msg.sender;
+            preProposal.targets = targets;
+            preProposal.values = values;
+            preProposal.signatures = new string[](targets.length);
+            preProposal.calldatas = calldatas;
+            preProposal.startBlock = proposalSnapshot(_proposalId);
+            preProposal.endBlock = proposalDeadline(_proposalId);
+            preProposal.description = description;
+
             preProposalNoMap[_proposalId] = _prePrposalIndex;
             _prePrposalIndex += 1;
         } else {
-            projectProposals[_projectProposalIndex] = ProjectProposal({
-                id: _projectProposalIndex,
-                proposalId: _proposalId,
-                proposer: _msgSender(),
-                targets: targets,
-                values: values,
-                signatures: new string[](targets.length),
-                calldatas: calldatas,
-                startBlock: proposalSnapshot(_proposalId),
-                endBlock: proposalDeadline(_proposalId),
-                description: description,
-                forVotes: VOTE_INIT,
-                againstVotes: VOTE_INIT,
-                abstainVotes: VOTE_INIT
-            });
+
+            // data set
+            ProjectProposal storage projectProposal = projectProposals[_projectProposalIndex];
+            projectProposal.id = _projectProposalIndex;
+            projectProposal.proposer = msg.sender;
+            projectProposal.targets = targets;
+            projectProposal.values = values;
+            projectProposal.signatures = new string[](targets.length);
+            projectProposal.calldatas = calldatas;
+            projectProposal.startBlock = proposalSnapshot(_proposalId);
+            projectProposal.endBlock = proposalDeadline(_proposalId);
+            projectProposal.description = description;
+
             projectProposalNoMap[_proposalId] = _projectProposalIndex;
             _projectProposalIndex += 1;
         }
@@ -166,6 +153,7 @@ contract GrowthUP is Governor, GovernorVotes {
         uint8 support
     ) public override returns (uint256) {
         super.castVote(proposalId, support);
+        address _account = msg.sender;
     }
 
     /**
@@ -179,49 +167,27 @@ contract GrowthUP is Governor, GovernorVotes {
         uint256 weight,
         bytes memory params
     ) internal override {
-        // HACK:preProposal/proposalどちらにもproposalIdがヒットしないときの処理がいけてない
-        // proposalIdが0のとき登録がされてない
-        // uint256 _preProposalIndex = preProposalNoMap[proposalId];
-        // uint256 _projectProposalIndex = projectProposalNoMap[proposalId];
-
-        // if (_preProposalIndex >= 1) {
-        //     if (support == 0) preProposals[_preProposalIndex].forVotes +=1;
-        //     else if (support == 1) preProposals[_preProposalIndex].againstVotes +=1;
-        //     else if (support == 2) preProposals[_preProposalIndex].abstainVotes +=1;
-        // }
-        // else if (_projectProposalIndex >= 1) {
-        //     if (support == 0) projectProposals[_projectProposalIndex].forVotes +=1;
-        //     else if (support == 1) projectProposals[_projectProposalIndex].againstVotes +=1;
-        //     else if (support == 2) projectProposals[_projectProposalIndex].abstainVotes +=1;
-        // }
-        // // preProposal/projevtProposalのどちらでもない場合errorにする
-        // //if(_preProposalID == 0 && _projectProposalID ==0) revert("Proposal type check error.");
-        ProposalVote storage proposalVote = _proposalVotes[proposalId];
-
-        if (proposalVote.hasVoted[account]) {
+       
+        //　重複投票チェック
+        if (proposalVotes[proposalId].hasVoted[account]) {
             revert GovernorAlreadyCastVote(account);
         }
-        proposalVote.hasVoted[account] = true;
-
-        if (support == uint8(VoteType.Against)) {
-            proposalVote.againstVotes += weight;
-        } else if (support == uint8(VoteType.For)) {
-            proposalVote.forVotes += weight;
-        } else if (support == uint8(VoteType.Abstain)) {
-            proposalVote.abstainVotes += weight;
-        } else {
-            revert GovernorInvalidVoteType();
+        
+        // proposalIdがどちらかのpreproposal/projectproposalに登録されている時
+        if (preProposalNoMap[proposalId] >= 1 || projectProposalNoMap[proposalId] >= 1) {
+            if (support == 0) proposalVotes[proposalId].forVotes += weight;
+            else if (support == 1) proposalVotes[proposalId].againstVotes += weight;
+            else if (support == 2) proposalVotes[proposalId].abstainVotes += weight;
+            proposalVotes[proposalId].hasVoted[account] = true;
         }
+
     }
 
     /**
      * 全てのpreProposal取得
      */
-    function getAllPreProposals()
-        external
-        view
-        returns (PreProposal[] memory allPreProposals)
-    {
+    function getAllPreProposals() external view returns (PreProposal[] memory allPreProposals){
+
         uint256 nextPreProposalIndex = _prePrposalIndex;
 
         allPreProposals = new PreProposal[](nextPreProposalIndex);
@@ -281,7 +247,7 @@ contract GrowthUP is Governor, GovernorVotes {
         uint256 proposalId,
         address account
     ) external view override returns (bool) {
-        return _proposalVotes[proposalId].hasVoted[account];
+        return proposalVotes[proposalId].hasVoted[account];
     }
 
     function _quorumReached(
@@ -291,9 +257,8 @@ contract GrowthUP is Governor, GovernorVotes {
     function _voteSucceeded(
         uint256 proposalId
     ) internal view virtual override returns (bool) {
-        ProposalVote storage proposalVote = _proposalVotes[proposalId];
+        ProposalVote storage proposalVote = proposalVotes[proposalId];
 
         return proposalVote.forVotes > proposalVote.againstVotes;
     }
-
 }
