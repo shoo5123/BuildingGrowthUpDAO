@@ -59,6 +59,7 @@ contract GrowthUP is Governor, GovernorVotes {
         uint256 startBlock;
         uint256 endBlock;
         string description;
+        string[] offers;
     }
 
     /**
@@ -76,6 +77,21 @@ contract GrowthUP is Governor, GovernorVotes {
         uint256 startBlock;
         uint256 endBlock;
         string description;
+        string[] offers;
+    }
+
+    /**
+     * projectProposal
+     * フロント用レスポンスインターフェース
+     */
+    struct ProposalResponce {
+        uint id;
+        uint256 proposalId;
+        string description;
+        address proposer;
+        uint256 startBlock;
+        uint256 endBlock;
+        ProposalState status;
     }
 
     /// Maps
@@ -97,23 +113,22 @@ contract GrowthUP is Governor, GovernorVotes {
     /**
      * new propose
      * prePrposalとproposalの発行
-     *
      */
     function propose(
         address[] memory targets,
         uint256[] memory values,
         bytes[] memory calldatas,
-        string memory description
-    ) public override(Governor) returns (uint256 _proposalId) {
-        // proposalの作成
-        _proposalId = super.propose(targets, values, calldatas, description);
+        string memory description,
+        string[] memory offers
+    ) public returns (uint256 _proposalId) {
+        _proposalId = propose(targets, values, calldatas, description);
 
         if (msg.sender == PRE_PROPOSE_ADDRESS) {
             // AI投稿用アドレスのとき
-
             // data set
             PreProposal storage preProposal = preProposals[_prePrposalIndex];
             preProposal.id = _prePrposalIndex;
+            preProposal.proposalId = _proposalId;
             preProposal.proposer = msg.sender;
             preProposal.targets = targets;
             preProposal.values = values;
@@ -122,6 +137,7 @@ contract GrowthUP is Governor, GovernorVotes {
             preProposal.startBlock = proposalSnapshot(_proposalId);
             preProposal.endBlock = proposalDeadline(_proposalId);
             preProposal.description = description;
+            preProposal.offers = offers;
 
             preProposalNoMap[_proposalId] = _prePrposalIndex;
             _prePrposalIndex += 1;
@@ -130,6 +146,7 @@ contract GrowthUP is Governor, GovernorVotes {
             // data set
             ProjectProposal storage projectProposal = projectProposals[_projectProposalIndex];
             projectProposal.id = _projectProposalIndex;
+            projectProposal.proposalId = _proposalId;
             projectProposal.proposer = msg.sender;
             projectProposal.targets = targets;
             projectProposal.values = values;
@@ -138,10 +155,22 @@ contract GrowthUP is Governor, GovernorVotes {
             projectProposal.startBlock = proposalSnapshot(_proposalId);
             projectProposal.endBlock = proposalDeadline(_proposalId);
             projectProposal.description = description;
+            projectProposal.offers = offers;
 
             projectProposalNoMap[_proposalId] = _projectProposalIndex;
             _projectProposalIndex += 1;
         }
+    }
+
+    function propose(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description
+    ) public override(Governor) returns (uint256 _proposalId) {
+        // proposalの作成
+        // HACK: このメソッドはintarnalにしたいけど、interfaceに縛られてるので変更したい
+        _proposalId = super.propose(targets, values, calldatas, description);
     }
 
     /**
@@ -175,24 +204,29 @@ contract GrowthUP is Governor, GovernorVotes {
         
         // proposalIdがどちらかのpreproposal/projectproposalに登録されている時
         if (preProposalNoMap[proposalId] >= 1 || projectProposalNoMap[proposalId] >= 1) {
-            if (support == 0) proposalVotes[proposalId].forVotes += weight;
-            else if (support == 1) proposalVotes[proposalId].againstVotes += weight;
-            else if (support == 2) proposalVotes[proposalId].abstainVotes += weight;
+            if (support == 0) proposalVotes[proposalId].forVotes += 1;
+            else if (support == 1) proposalVotes[proposalId].againstVotes += 1;
+            else if (support == 2) proposalVotes[proposalId].abstainVotes += 1;
             proposalVotes[proposalId].hasVoted[account] = true;
         }
-
     }
 
     /**
      * 全てのpreProposal取得
      */
-    function getAllPreProposals() external view returns (PreProposal[] memory allPreProposals){
+    function getAllPreProposals() external view returns (ProposalResponce[] memory proposalResponce){
 
-        uint256 nextPreProposalIndex = _prePrposalIndex;
-
-        allPreProposals = new PreProposal[](nextPreProposalIndex);
-        for (uint256 i = 0; i < nextPreProposalIndex; i += 1) {
-            allPreProposals[i] = preProposals[i];
+        proposalResponce = new ProposalResponce[](_prePrposalIndex);
+        
+        for (uint256 i = 1; i < _prePrposalIndex; i += 1) {
+            proposalResponce[i].id = i;
+            proposalResponce[i].proposalId = preProposals[i].proposalId;
+            proposalResponce[i].description = preProposals[i].description;
+            proposalResponce[i].proposer = preProposals[i].proposer;
+            proposalResponce[i].proposalId = preProposals[i].proposalId;
+            proposalResponce[i].startBlock = preProposals[i].startBlock;
+            proposalResponce[i].endBlock = preProposals[i].endBlock;
+            proposalResponce[i].status = state(preProposals[i].proposalId);
         }
     }
 
@@ -202,13 +236,19 @@ contract GrowthUP is Governor, GovernorVotes {
     function getAllProjectProposals()
         external
         view
-        returns (ProjectProposal[] memory allProposals)
+        returns (ProposalResponce[] memory proposalResponce)
     {
-        uint256 nextProposalIndex = _projectProposalIndex;
+        proposalResponce = new ProposalResponce[](_projectProposalIndex);
 
-        allProposals = new ProjectProposal[](nextProposalIndex);
-        for (uint256 i = 0; i < nextProposalIndex; i += 1) {
-            allProposals[i] = projectProposals[i];
+        for (uint256 i = 1; i < _projectProposalIndex; i += 1) {
+            proposalResponce[i].id = i;
+            proposalResponce[i].proposalId = projectProposals[i].proposalId;
+            proposalResponce[i].description = projectProposals[i].description;
+            proposalResponce[i].proposer = projectProposals[i].proposer;
+            proposalResponce[i].proposalId = projectProposals[i].proposalId;
+            proposalResponce[i].startBlock = projectProposals[i].startBlock;
+            proposalResponce[i].endBlock = projectProposals[i].endBlock;
+            proposalResponce[i].status = state(projectProposals[i].proposalId);
         }
     }
 
