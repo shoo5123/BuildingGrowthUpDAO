@@ -301,4 +301,13 @@ contract GrowthUP is Governor, GovernorVotes {
 
         return proposalVote.forVotes > proposalVote.againstVotes;
     }
+    
+    function clock() public view override(Governor,GovernorVotes) returns (uint48) {
+        return uint48(block.timestamp);
+    }
+
+    // solhint-disable-next-line func-name-mixedcase
+    function CLOCK_MODE() public pure override(Governor,GovernorVotes) returns (string memory) {
+        return "mode=timestamp";
+    }
 }
