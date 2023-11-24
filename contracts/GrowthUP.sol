@@ -19,14 +19,11 @@ contract GrowthUP is Governor, GovernorVotes, GovernorVotesQuorumFraction {
         0x2B38BA2E0C8251D02b61C4DFBEe161dbb6AE3e66; // preProposalができるアドレス
     uint256 constant VOTE_INIT = 0; // 投票の初期値
 
-    // preProposal description
     uint256 private _prePrposalIndex = 0; // preProposal index
     // uint256 private _preProposalVotingDelay; // 投票AIの投票開始までの時間
     // uint256 private _prePrpposalVotingPeriod; // 投票AIの投票開始から終了までの時間
     // uint256 private _preProposalThreshold; // AI投票に必要な投票数。ex 10人の投票AIが存在するとき10が閾値
 
-    // proposal description
-    // preProposal description
     uint256 private _projectProposalIndex = 0; // proposal index
     uint256 private _proposalVotingDelay; // プロジェクト参加企業の参加表明開始までの時間
     // uint256 private _prpposalVotingPeriod; // プロジェクト参加企業の参加表明開始から終了までの時間
@@ -96,6 +93,7 @@ contract GrowthUP is Governor, GovernorVotes, GovernorVotesQuorumFraction {
         ProposalState status;
         address[] targets;
         uint256[] values;
+        bytes[] calldatas;
     }
 
     /// Maps
@@ -105,6 +103,7 @@ contract GrowthUP is Governor, GovernorVotes, GovernorVotesQuorumFraction {
     /// @dev preProposal index => Proposal
     mapping(uint256 => PreProposal) public preProposals;
     mapping(uint256 => ProjectProposal) public projectProposals;
+    /// @dev proposalVotes poposalIdと投票結果のmap
     mapping(uint256 proposalId => ProposalVote) public proposalVotes;
 
     constructor(
@@ -146,7 +145,6 @@ contract GrowthUP is Governor, GovernorVotes, GovernorVotesQuorumFraction {
             preProposalNoMap[_proposalId] = _prePrposalIndex;
             _prePrposalIndex += 1;
         } else {
-
             // data set
             ProjectProposal storage projectProposal = projectProposals[_projectProposalIndex];
             projectProposal.id = _projectProposalIndex;
@@ -232,6 +230,7 @@ contract GrowthUP is Governor, GovernorVotes, GovernorVotesQuorumFraction {
             proposalResponce[i].startBlock = preProposals[i].startBlock;
             proposalResponce[i].endBlock = preProposals[i].endBlock;
             proposalResponce[i].status = state(preProposals[i].proposalId);
+            proposalResponce[i].calldatas = preProposals[i].calldatas;
         }
     }
 
@@ -255,6 +254,7 @@ contract GrowthUP is Governor, GovernorVotes, GovernorVotesQuorumFraction {
             proposalResponce[i].startBlock = projectProposals[i].startBlock;
             proposalResponce[i].endBlock = projectProposals[i].endBlock;
             proposalResponce[i].status = state(projectProposals[i].proposalId);
+            proposalResponce[i].calldatas = projectProposals[i].calldatas;
         }
     }
 
