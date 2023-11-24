@@ -4,8 +4,10 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/governance/Governor.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
 
-contract GrowthUP is Governor, GovernorVotes {
+contract GrowthUP is Governor, GovernorVotes, GovernorVotesQuorumFraction {
     // contract description
     bytes32 private constant MODULE_TYPE = bytes32("VoteERC20");
     uint256 private constant VERSION = 1;
@@ -18,14 +20,14 @@ contract GrowthUP is Governor, GovernorVotes {
     uint256 constant VOTE_INIT = 0; // 投票の初期値
 
     // preProposal description
-    uint256 private _prePrposalIndex = 1; // preProposal index
+    uint256 private _prePrposalIndex = 0; // preProposal index
     // uint256 private _preProposalVotingDelay; // 投票AIの投票開始までの時間
     // uint256 private _prePrpposalVotingPeriod; // 投票AIの投票開始から終了までの時間
     // uint256 private _preProposalThreshold; // AI投票に必要な投票数。ex 10人の投票AIが存在するとき10が閾値
 
     // proposal description
     // preProposal description
-    uint256 private _projectProposalIndex = 1; // proposal index
+    uint256 private _projectProposalIndex = 0; // proposal index
     uint256 private _proposalVotingDelay; // プロジェクト参加企業の参加表明開始までの時間
     // uint256 private _prpposalVotingPeriod; // プロジェクト参加企業の参加表明開始から終了までの時間
     // uint256 private _proposalThreshold; // プロジェクト開始と終了に合意が必要な人数。ex 4社にプロジェクト提案を行う場合、４社が参加表明することでプロジェクトが開始状態になる。また、プロジェクトを終了させるときの合意人数となる。
@@ -86,12 +88,14 @@ contract GrowthUP is Governor, GovernorVotes {
      */
     struct ProposalResponce {
         uint id;
-        uint256 proposalId;
+        string proposalId;
         string description;
         address proposer;
         uint256 startBlock;
         uint256 endBlock;
         ProposalState status;
+        address[] targets;
+        uint256[] values;
     }
 
     /// Maps
@@ -108,13 +112,13 @@ contract GrowthUP is Governor, GovernorVotes {
         string memory _name,
         string memory _symbol,
         IVotes _token
-    ) Governor("GrowthUP") GovernorVotes(_token) {}
+    ) Governor("GrowthUP") GovernorVotes(_token) GovernorVotesQuorumFraction(0){}
 
     /**
      * new propose
      * prePrposalとproposalの発行
      */
-    function propose(
+    function proposeWithOffers(
         address[] memory targets,
         uint256[] memory values,
         bytes[] memory calldatas,
@@ -218,12 +222,13 @@ contract GrowthUP is Governor, GovernorVotes {
 
         proposalResponce = new ProposalResponce[](_prePrposalIndex);
         
-        for (uint256 i = 1; i < _prePrposalIndex; i += 1) {
+        for (uint256 i = 0; i < _prePrposalIndex; i += 1) {
             proposalResponce[i].id = i;
-            proposalResponce[i].proposalId = preProposals[i].proposalId;
+            proposalResponce[i].proposalId = Strings.toString(preProposals[i].proposalId);
             proposalResponce[i].description = preProposals[i].description;
             proposalResponce[i].proposer = preProposals[i].proposer;
-            proposalResponce[i].proposalId = preProposals[i].proposalId;
+            proposalResponce[i].targets = preProposals[i].targets;
+            proposalResponce[i].values = preProposals[i].values;
             proposalResponce[i].startBlock = preProposals[i].startBlock;
             proposalResponce[i].endBlock = preProposals[i].endBlock;
             proposalResponce[i].status = state(preProposals[i].proposalId);
@@ -240,12 +245,13 @@ contract GrowthUP is Governor, GovernorVotes {
     {
         proposalResponce = new ProposalResponce[](_projectProposalIndex);
 
-        for (uint256 i = 1; i < _projectProposalIndex; i += 1) {
+        for (uint256 i = 0; i < _projectProposalIndex; i += 1) {
             proposalResponce[i].id = i;
-            proposalResponce[i].proposalId = projectProposals[i].proposalId;
+            proposalResponce[i].proposalId = Strings.toString(projectProposals[i].proposalId);
             proposalResponce[i].description = projectProposals[i].description;
             proposalResponce[i].proposer = projectProposals[i].proposer;
-            proposalResponce[i].proposalId = projectProposals[i].proposalId;
+            proposalResponce[i].targets = projectProposals[i].targets;
+            proposalResponce[i].values = projectProposals[i].values;
             proposalResponce[i].startBlock = projectProposals[i].startBlock;
             proposalResponce[i].endBlock = projectProposals[i].endBlock;
             proposalResponce[i].status = state(projectProposals[i].proposalId);
@@ -281,7 +287,7 @@ contract GrowthUP is Governor, GovernorVotes {
         return 100;
     }
 
-    function quorum(uint256 timepoint) public view override returns (uint256) {}
+    function quorum(uint256 timepoint) public view override(Governor, GovernorVotesQuorumFraction) returns (uint256) {}
 
     function hasVoted(
         uint256 proposalId,
@@ -292,7 +298,10 @@ contract GrowthUP is Governor, GovernorVotes {
 
     function _quorumReached(
         uint256 proposalId
-    ) internal view virtual override returns (bool) {}
+    ) internal view virtual override returns (bool) {
+        // todo proposeでOfferになったアドレスの投票が全て終わったらtrue
+        return true;
+    }
 
     function _voteSucceeded(
         uint256 proposalId
@@ -300,14 +309,5 @@ contract GrowthUP is Governor, GovernorVotes {
         ProposalVote storage proposalVote = proposalVotes[proposalId];
 
         return proposalVote.forVotes > proposalVote.againstVotes;
-    }
-    
-    function clock() public view override(Governor,GovernorVotes) returns (uint48) {
-        return uint48(block.timestamp);
-    }
-
-    // solhint-disable-next-line func-name-mixedcase
-    function CLOCK_MODE() public pure override(Governor,GovernorVotes) returns (string memory) {
-        return "mode=timestamp";
     }
 }
